@@ -64,7 +64,7 @@ export function hoursKeyboard(
   }
   for (let i = startsAt; i < limit; i++) {
     kb.text(_24to12(i), `${prefix}_${i}`);
-    if (i === (includeLast ? 23 : 23)) {
+    if (i === 23) {
       i = -1; // -1? i gets incremented to 0 in the next iteration.
       limit = startsAt - 1;
     }
