@@ -80,16 +80,16 @@ async function reportHandler(
   }];
 
   const admins = await ctx.getChatAdministrators();
-  for (const admin of admins) {
-    if (admin.is_anonymous || admin.user.is_bot) continue;
+  await Promise.all(admins.map(async (admin) => {
+    if (admin.is_anonymous || admin.user.is_bot) return;
     const user = await storage.read(`${admin.user.id}`);
     if (user) {
-      if (user.dnd) continue;
+      if (user.dnd) return;
       if (
         user.interval !== undefined && user.tz !== undefined &&
         !isAvailable(user)
       ) {
-        continue; // Admin is currently unavailable as per the timezone and interval they set.
+        return; // Admin is currently unavailable as per the timezone and interval they set.
       }
     }
 
@@ -100,7 +100,7 @@ async function reportHandler(
       offset: msg.length - 1,
       length: 1,
     });
-  }
+  }));
 
   // If all admins are unavailable at the moment, just tag the chat creator.
   if (entities.length === 1) {
