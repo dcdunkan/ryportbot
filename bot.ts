@@ -186,7 +186,7 @@ You can customize the default unavailability period (12AM to 6AM) using the /una
       return await ctx.answerCallbackQuery("Couldn't find the timezone");
     }
 
-    if (!session.interval) session.interval = [0, 6];
+    if (!session.interval) session.interval = [0, 6]; // 12AM to 6AM
     ctx.session = {
       ...session,
       tz: timezone, // never store offset!
@@ -237,7 +237,7 @@ pm.callbackQuery(/set-loc_(.+)/, async (ctx) => {
     return await ctx.answerCallbackQuery("Couldn't find the timezone");
   }
 
-  if (!session.interval) session.interval = [0, 6]; // 12AM to 6PM
+  if (!session.interval) session.interval = [0, 6]; // 12AM to 6AM
   ctx.session = {
     ...session,
     tz: location,
