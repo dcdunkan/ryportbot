@@ -2,8 +2,6 @@ import { getTimeZones, InlineKeyboard } from "./deps.ts";
 import { Context, SessionData } from "./context.ts";
 
 // Constants
-// ZWSP: Zero-width space character for applying the hidden `text_mention`
-export const ZWSP = "\u200b";
 // Random replies if someone reports the bot itself.
 export const REPORT_BOT_REPLIES = [
   "You can't report me.",

@@ -8,7 +8,6 @@ import {
   getTimeZones,
   InlineKeyboard,
   lazySession,
-  MessageEntity,
   timeZonesNames,
 } from "./deps.ts";
 import {
@@ -22,7 +21,6 @@ import {
   nonAdmins,
   REPORT_BOT_REPLIES,
   UNAVAIL_KEYBOARD1,
-  ZWSP,
 } from "./helpers.ts";
 import { Context, customMethods, SessionData } from "./context.ts";
 
@@ -44,6 +42,7 @@ const grp = bot.chatType(["group", "supergroup"]);
 const exceptChannel = bot.chatType(["private", "group", "supergroup"]);
 
 type GroupContext = ChatTypeContext<Context, "group" | "supergroup">;
+
 async function reportHandler(
   ctx:
     | CommandContext<GroupContext>
@@ -65,21 +64,15 @@ async function reportHandler(
     return;
   }
 
-  let msg = `Reported ${from.first_name} [${from.id}] to admins.`;
-  const entities: MessageEntity[] = [{
-    type: "text_link",
-    url: from.is_bot
+  let msg = `Reported <a href="${
+    from.is_bot
       ? `https://telegram.me/${from.username}`
-      : `tg://user?id=${from.id}`, // always id, not username.
-    offset: 9,
-    length: from.first_name.length,
-  }, {
-    type: "code",
-    length: from.id.toString().length,
-    offset: 9 + from.first_name.length + 2,
-  }];
+      : `tg://user?id=${from.id}`
+  }">${from.first_name}</a> [<code>${from.id}</code>] to admins.\n`;
 
+  let availableAdmins = 0;
   const admins = await ctx.getChatAdministrators();
+
   await Promise.all(admins.map(async (admin) => {
     if (admin.is_anonymous || admin.user.is_bot) return;
     const user = await storage.read(`${admin.user.id}`);
@@ -93,35 +86,24 @@ async function reportHandler(
       }
     }
 
-    msg += ZWSP;
-    entities.push({
-      type: "text_mention",
-      user: admin.user,
-      offset: msg.length - 1,
-      length: 1,
-    });
+    availableAdmins++;
+    msg += admin.user.username
+      ? `@${admin.user.username} `
+      : `<a href="tg://user?id=${admin.user.id}">${admin.user.first_name}</a> `;
   }));
 
   // If all admins are unavailable at the moment, just tag the chat creator.
-  if (entities.length === 1) {
+  if (availableAdmins === 0) {
     const creator = admins.find((admin) => admin.status === "creator");
     // There might be no creator or the admins are anonymous.
     if (creator) {
-      msg += ZWSP;
-      entities.push({
-        type: "text_mention",
-        user: creator.user,
-        offset: msg.length - 1,
-        length: 1,
-      });
+      msg += creator.user.username
+        ? `@${creator.user.username} `
+        : `<a href="tg://user?id=${creator.user.id}">${creator.user.first_name}</a> `;
     }
   }
 
-  await ctx.reply(msg, {
-    entities,
-    reply_to_message_id: ctx.msg.message_id,
-    allow_sending_without_reply: true,
-  });
+  await ctx.comment(msg, "HTML");
 }
 
 grp.filter(nonAdmins).command(["report", "admin"], reportHandler);

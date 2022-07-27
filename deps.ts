@@ -13,11 +13,7 @@ export {
 } from "https://deno.land/x/grammy@v1.9.2/mod.ts";
 export { freeStorage } from "https://deno.land/x/grammy_storages@v2.0.0/free/src/mod.ts";
 export { run } from "https://deno.land/x/grammy_runner@v1.0.3/mod.ts"; // local
-export type {
-  Message,
-  MessageEntity,
-  ParseMode,
-} from "https://esm.sh/@grammyjs/types@2.8.1";
+export type { Message, ParseMode } from "https://esm.sh/@grammyjs/types@2.8.1";
 
 // utils
 export {
