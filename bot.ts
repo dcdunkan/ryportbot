@@ -148,7 +148,7 @@ pm.command(["tz", "timezone"], async (ctx) => {
   const statusText = session.tz
     ? `You have set <b>${session.tz}</b> as your timezone. Use /clear_tz to remove it.`
     : `You haven't configured a timezone yet. \
-You can find your timezone location by going <a href="https://tzone.deno.dev">here</a> or search one.`;
+You can find your timezone location by going <a href="https://tzone.deno.dev">here</a>, or by searching one.`;
 
   if (!ctx.match) {
     return await ctx.reply(
@@ -161,8 +161,8 @@ Examples
 ${statusText}
 
 <b>Timezone</b>
-You can set a <a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones">timezone</a>, and I won't tag you reports while you're unavailable. \
-By default you're considered as unavailable, if it is night time at your location. \
+You can set a <a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones">timezone</a>, and I won't tag you for reports while you're unavailable. \
+By default, you're considered to be unavailable, if it is night time at your location. \
 You can customize the default unavailability period (12AM to 6AM) using the /unavail command.`,
       HTML,
     );
@@ -194,7 +194,7 @@ You can customize the default unavailability period (12AM to 6AM) using the /una
 
     const userTime = getUserTime(tz.currentTimeOffsetInMinutes);
     return await ctx.reply(
-      `Timezone location have been set to <b>${timezone}</b>. \
+      `Timezone location has been set to <b>${timezone}</b>. \
 I guess the time is ${getDisplayTime(userTime)} at your place.`,
       HTML,
     );
@@ -245,7 +245,7 @@ pm.callbackQuery(/set-loc_(.+)/, async (ctx) => {
 
   const userTime = getUserTime(tz.currentTimeOffsetInMinutes);
   await ctx.editMessageText(
-    `Timezone location have been set to <b>${location}</b>. \
+    `Timezone location has been set to <b>${location}</b>. \
 I guess the time is ${getDisplayTime(userTime)} at your place.`,
     HTML,
   );
@@ -259,7 +259,7 @@ pm.command("clear_tz", async (ctx) => {
     interval: undefined,
   };
   await ctx.reply(
-    "Timezone have been cleared. You can set a new one using the /tz command.",
+    "Timezone has been cleared. You can set a new one using the /tz command.",
   );
 });
 
@@ -291,9 +291,9 @@ You can change it using the button below.`
   await ctx.reply(
     `${statusText}
 
-In your daily life you're probably not be available 24x7. You need sleep, and you may have work. \
+In your daily life, you're probably not be available 24x7. You need sleep, and you may have work. \
 So while you're unavailable, it is a disturbance if the bot tags you when people /report. \
-With this feature you can set a time period which you are expected to be unavailable. \
+With this feature you can set a time period during which you are expected to be unavailable. \
 If such an unavailability period is set, the bot will check if you're available or not before tagging you.
 
 <b>Note</b>: This feature won't work if you're the chat creator and no other admins are available.
@@ -394,13 +394,13 @@ exceptChannel.command("start", async (ctx) => {
     ? ""
     : "\nIn order to do that, I need your /timezone. You can simply set one by using /tz. \
 So I can decide whether you are available or not based on your /unavail-ability time period and timezone, before mentioning you. \
-I also helps you to go to Do Not Disturb mode (/dnd), which makes you fully unavailable until you disable it.\n";
+I also help you to go to Do Not Disturb mode (/dnd), which makes you fully unavailable until you disable it.\n";
 
   await ctx.reply(
     ctx.chat.type !== "private"
       ? "Hi! For /help, ping me in private."
       : `Hi! I can mention admins in a group chat when someone reports something. \
-But, unlike other bots which does the same thing, I only tags you when you're available.
+But, unlike other bots which do the same thing, I only tag you when you're available.
 ${helpText}
 See /help for more information.`,
   );
