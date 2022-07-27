@@ -373,15 +373,16 @@ pm.command("disable_unavail", async (ctx) => {
 
 pm.command("am_i_available", async (ctx) => {
   const session = await ctx.session;
-  const available = isAvailable(session);
   let msg = !session.tz
     ? "I don't know. You haven't set any timezone yet. So, I can't really tell."
     : session.interval
-    ? `Seems like you are ${available ? "" : "un"}available right now.`
+    ? `Seems like you are ${
+      isAvailable(session) ? "" : "un"
+    }available right now.`
     : "Not sure about it since you disabled the /unavail-ability feature.";
 
   if (session.dnd) {
-    msg += session.interval && !available
+    msg += session.interval && !isAvailable(session)
       ? " And you also have /dnd enabled."
       : " But you have /dnd enabled right now. So, I guess you're unavailable rn.";
   }
