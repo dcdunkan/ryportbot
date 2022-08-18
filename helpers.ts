@@ -114,6 +114,13 @@ export function getUser(msg: Message) {
     : { ...msg.from!, is_user: msg.from?.is_bot ? false : true };
 }
 
+export function esc(str: string) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+}
+
 // Option builders
 export const HTML = { parse_mode: "HTML" as const };
 

@@ -11,6 +11,7 @@ import {
   _24to12,
   admins,
   containsAdminMention,
+  esc,
   getDisplayTime,
   getRandomReply,
   getUser,
@@ -78,11 +79,11 @@ async function reportHandler(ctx: ReportContext) {
     reporter.is_user
       ? `tg://user?id=${reporter.id}`
       : `https://t.me/${reporter.username}`
-  }">${reporter.first_name}</a> reported <a href="${
+  }">${esc(reporter.first_name)}</a> reported <a href="${
     report.is_user
       ? `tg://user?id=${report.id}`
       : `https://t.me/${report.username}`
-  }">${report.first_name}</a> [<code>${report.id}</code>]\n`;
+  }">${esc(report.first_name)}</a> [<code>${report.id}</code>]\n`;
 
   let availableAdmins = 0;
   const admins = await ctx.getChatAdministrators();
@@ -98,8 +99,8 @@ async function reportHandler(ctx: ReportContext) {
 
     availableAdmins++;
     msg += admin.user.username
-      ? `@${admin.user.username} `
-      : `<a href="tg://user?id=${admin.user.id}">${admin.user.first_name}</a> `;
+      ? `@${esc(admin.user.username)} `
+      : `<a href="tg://user?id=${admin.user.id}">${esc(admin.user.first_name)}</a> `;
   }));
 
   // If all admins are unavailable at the moment, just tag the chat creator.
@@ -108,8 +109,8 @@ async function reportHandler(ctx: ReportContext) {
     // There might be no creator or the admins are anonymous.
     if (creator) {
       msg += creator.user.username
-        ? `@${creator.user.username} `
-        : `<a href="tg://user?id=${creator.user.id}">${creator.user.first_name}</a> `;
+        ? `@${esc(creator.user.username)} `
+        : `<a href="tg://user?id=${creator.user.id}">${esc(creator.user.first_name)}</a> `;
     }
   }
 
