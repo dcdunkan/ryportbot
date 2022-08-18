@@ -1,4 +1,10 @@
-import { getTimeZones, InlineKeyboard } from "./deps.ts";
+import {
+  ChatTypeContext,
+  Filter,
+  getTimeZones,
+  InlineKeyboard,
+  Message,
+} from "./deps.ts";
 import { Context, SessionData } from "./context.ts";
 
 // Constants
@@ -38,9 +44,11 @@ function checkIfInBetween(offset: number, start: number, end: number) {
 }
 
 export function isAvailable({ tz, interval }: SessionData) {
-  const offset = getTimeZones().find((t) => t.group.includes(tz!))
-    ?.currentTimeOffsetInMinutes; // why? DST!!
-  return !checkIfInBetween(offset!, interval![0], interval![1]);
+  // If anyone haven't set anything, then consider as they are available.
+  if (!tz || !interval) return true;
+  const offset = getTimeZones().find((t) => t.group.includes(tz))
+    ?.currentTimeOffsetInMinutes!; // why? DST!!
+  return !checkIfInBetween(offset, interval[0], interval[1]);
 }
 
 export function getRandomReply(replies: string[]) {
@@ -81,14 +89,57 @@ export function _24to12(x: number) {
     : x.toString().padStart(2, "0") + " AM";
 }
 
+export function getUser(msg: Message) {
+  return msg.sender_chat?.type === "channel"
+    ? {
+      first_name: msg.sender_chat.title,
+      id: msg.sender_chat.id,
+      username: msg.sender_chat.username,
+      is_user: false,
+    }
+    : msg.sender_chat?.type === "group"
+    ? {
+      first_name: msg.sender_chat.title,
+      id: msg.sender_chat.id,
+      username: undefined,
+      is_user: false,
+    }
+    : msg.sender_chat?.type === "supergroup"
+    ? {
+      first_name: msg.sender_chat.title,
+      id: msg.sender_chat.id,
+      username: msg.sender_chat.username,
+      is_user: false,
+    }
+    : { ...msg.from!, is_user: msg.from?.is_bot ? false : true };
+}
+
 // Option builders
 export const HTML = { parse_mode: "HTML" as const };
 
-// Filters
-export async function nonAdmins(ctx: Context) {
+// Predicates
+export async function admins(ctx: Context) {
   const author = await ctx.getAuthor();
   if (author.status === "administrator" || author.status === "creator") {
-    return false;
+    return true;
   }
-  return true;
+  return false;
+}
+
+export async function nonAdmins(ctx: Context) {
+  return !(await admins(ctx));
+}
+
+export function containsAdminMention(
+  ctx: Filter<
+    ChatTypeContext<Context, "group" | "supergroup">,
+    "msg:entities:mention" | "msg:caption_entities:mention"
+  >,
+) {
+  const text = (ctx.msg.text ?? ctx.msg.caption)!;
+  return (ctx.msg.entities ?? ctx.msg.caption_entities)
+    .find((e) => {
+      const t = text.slice(e.offset, e.offset + e.length);
+      return e.type === "mention" && (t === "@admin" || t === "@admins");
+    }) !== undefined;
 }

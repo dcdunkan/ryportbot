@@ -1,8 +1,5 @@
 import {
   Bot,
-  ChatTypeContext,
-  CommandContext,
-  Filter,
   freeStorage,
   Fuse,
   getTimeZones,
@@ -12,8 +9,11 @@ import {
 } from "./deps.ts";
 import {
   _24to12,
+  admins,
+  containsAdminMention,
   getDisplayTime,
   getRandomReply,
+  getUser,
   getUserTime,
   hoursKeyboard,
   HTML,
@@ -22,7 +22,12 @@ import {
   REPORT_BOT_REPLIES,
   UNAVAIL_KEYBOARD1,
 } from "./helpers.ts";
-import { Context, customMethods, SessionData } from "./context.ts";
+import {
+  Context,
+  customMethods,
+  ReportContext,
+  SessionData,
+} from "./context.ts";
 
 export const TOKEN = Deno.env.get("BOT_TOKEN");
 if (!TOKEN) throw new Error("BOT_TOKEN is missing");
@@ -34,41 +39,50 @@ bot.use(customMethods);
 bot.catch(console.error);
 // Assign some always-use-parameters to the payload.
 bot.api.config.use((prev, method, payload, signal) =>
-  prev(method, { ...payload, disable_web_page_preview: true }, signal)
+  prev(method, {
+    ...payload,
+    disable_web_page_preview: true,
+    allow_sending_without_reply: true,
+  }, signal)
 );
 
 const pm = bot.chatType("private");
 const grp = bot.chatType(["group", "supergroup"]);
 const exceptChannel = bot.chatType(["private", "group", "supergroup"]);
 
-type GroupContext = ChatTypeContext<Context, "group" | "supergroup">;
-
-async function reportHandler(
-  ctx:
-    | CommandContext<GroupContext>
-    | Filter<
-      GroupContext,
-      "msg:entities:mention" | "msg:caption_entities:mention"
-    >,
-) {
-  if (!ctx.msg.reply_to_message) {
+async function reportHandler(ctx: ReportContext) {
+  const reportedMsg = ctx.msg.reply_to_message;
+  if (!reportedMsg) {
     return await ctx.comment("Reply /report to a message.");
   }
 
-  const from = ctx.msg.reply_to_message.from!;
-  if (from.id === ctx.me.id) {
+  // Connected channel's forwarded post.
+  if (reportedMsg.is_automatic_forward) return;
+
+  const reporter = getUser(ctx.msg);
+  const report = getUser(reportedMsg);
+
+  if (report.id === ctx.me.id) {
     return await ctx.comment(getRandomReply(REPORT_BOT_REPLIES));
   }
-  const member = await ctx.getChatMember(from.id);
-  if (member.status === "administrator" || member.status === "creator") {
-    return;
+
+  // Maybe as channels?
+  if (ctx.senderChat === undefined) {
+    const member = await ctx.getChatMember(report.id);
+    if (member.status === "administrator" || member.status === "creator") {
+      return;
+    }
   }
 
-  let msg = `Reported <a href="${
-    from.is_bot
-      ? `https://telegram.me/${from.username}`
-      : `tg://user?id=${from.id}`
-  }">${from.first_name}</a> [<code>${from.id}</code>] to admins.\n`;
+  let msg = `<a href="${
+    reporter.is_user
+      ? `tg://user?id=${reporter.id}`
+      : `https://t.me/${reporter.username}`
+  }">${reporter.first_name}</a> reported <a href="${
+    report.is_user
+      ? `tg://user?id=${report.id}`
+      : `https://t.me/${report.username}`
+  }">${report.first_name}</a> [<code>${report.id}</code>]\n`;
 
   let availableAdmins = 0;
   const admins = await ctx.getChatAdministrators();
@@ -78,12 +92,8 @@ async function reportHandler(
     const user = await storage.read(`${admin.user.id}`);
     if (user) {
       if (user.dnd) return;
-      if (
-        user.interval !== undefined && user.tz !== undefined &&
-        !isAvailable(user)
-      ) {
-        return; // Admin is currently unavailable as per the timezone and interval they set.
-      }
+      // Admin is currently unavailable as per the timezone and interval they set.
+      if (!isAvailable(user)) return;
     }
 
     availableAdmins++;
@@ -103,27 +113,122 @@ async function reportHandler(
     }
   }
 
-  await ctx.comment(msg, "HTML");
+  const keyboard = new InlineKeyboard()
+    .text("Handled", "mark-as-handled");
+
+  // Delete the reporter's message.
+  if (admins.find((a) => a.user.id === ctx.me.id)) {
+    keyboard
+      .text("Ban", `ban_${reportedMsg.message_id}_${report.id}`);
+
+    try {
+      await ctx.deleteMessage();
+    } catch (_e) {
+      // Maybe the "/report" message got deleted :/
+      // Or Bot doesn't have permission to delete.
+    }
+  }
+
+  await ctx.reply(msg, {
+    parse_mode: "HTML",
+    reply_markup: keyboard.text("Ignore", "ignore"),
+    reply_to_message_id: reportedMsg.message_id,
+  });
 }
 
-grp.filter(nonAdmins).command(["report", "admin"], reportHandler);
+grp.callbackQuery("mark-as-handled")
+  .filter(admins, async (ctx) => {
+    const msg = `${ctx.msg?.text?.split("\n")[0]}\n👀 Marked as handled by `;
+
+    await ctx.editMessageText(`${msg}${ctx.from.first_name}.`, {
+      entities: [
+        ...ctx.msg?.entities?.slice(0, 3)!,
+        {
+          type: "text_mention",
+          user: ctx.from,
+          offset: msg.length,
+          length: ctx.from.first_name.length,
+        },
+      ],
+    });
+
+    return await ctx.alert("Report has been marked as handled.");
+  });
+
+grp.callbackQuery(/ban_(?<msg>\d+)_(?<id>-?\d+)/)
+  .filter(admins, async (ctx) => {
+    const match = (ctx.match as RegExpMatchArray).groups!;
+    const me = await ctx.getChatMember(ctx.me.id);
+    if (me.status !== "administrator") {
+      return await ctx.alert("I am not an administrator in this chat.");
+    }
+    if (!me.can_restrict_members) {
+      return await ctx.alert(
+        "I don't have enough permissions to ban other users.",
+      );
+    }
+    const id = parseInt(match.id);
+    await ctx[id < 0 ? "banChatSenderChat" : "banChatMember"](id);
+
+    if (me.can_delete_messages) {
+      await ctx.api.deleteMessage(ctx.chat.id, parseInt(match.msg));
+      await ctx.alert("⚔️ Banned, they're gone!");
+    } else {
+      await ctx.alert(
+        "Banned. But, I don't have enough permissions so I can't remove their message.",
+      );
+    }
+
+    const msg = `${
+      ctx.msg?.text?.split("\n")[0]
+    }\n👋🏽 Banned from the group by `;
+
+    await ctx.editMessageText(`${msg}${ctx.from.first_name}.`, {
+      entities: [
+        ...ctx.msg?.entities?.slice(0, 3)!,
+        {
+          type: "text_mention",
+          user: ctx.from,
+          offset: msg.length,
+          length: ctx.from.first_name.length,
+        },
+      ],
+    });
+  });
+
+grp.callbackQuery("ignore")
+  .filter(admins, async (ctx) => {
+    const msg = `${ctx.msg?.text?.split("\n")[0]}\n🗣 Report ignored by `;
+
+    await ctx.editMessageText(`${msg}${ctx.from.first_name}.`, {
+      entities: [
+        ...ctx.msg?.entities?.slice(0, 3)!,
+        {
+          type: "text_mention",
+          user: ctx.from,
+          offset: msg.length,
+          length: ctx.from.first_name.length,
+        },
+      ],
+    });
+
+    return await ctx.alert("Report ignored, sorry to bother you.");
+  });
+
+grp.command(["report", "admin"])
+  .filter(nonAdmins, reportHandler);
+
 grp.on(["msg:entities:mention", "msg:caption_entities:mention"])
-  .filter(nonAdmins).filter((ctx) => {
-    const text = (ctx.msg.text ?? ctx.msg.caption)!;
-    return (ctx.msg.entities ?? ctx.msg.caption_entities)
-      .find((e) => {
-        const t = text.slice(e.offset, e.offset + e.length);
-        return e.type === "mention" && (t === "@admin" || t === "@admins");
-      }) !== undefined;
-  })
-  .use(reportHandler);
+  .filter(containsAdminMention)
+  .filter(nonAdmins, reportHandler);
 
 // the following also works. but not as good as the above filtering.
 // grp.hears(/.*(\s|^)(@admins?)\b.*/g, reportHandler);
 
-pm.command(["report", "admin"], async (ctx) => {
-  await ctx.reply("That works only in groups.");
-});
+pm.command(
+  ["report", "admin"],
+  (ctx) => ctx.reply("That works only in groups."),
+);
 
 pm.command(["tz", "timezone"], async (ctx) => {
   const session = await ctx.session;
