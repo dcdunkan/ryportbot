@@ -16,7 +16,6 @@ export type {
   ParseMode,
 } from "https://deno.land/x/grammy@v1.10.1/types.ts";
 export { freeStorage } from "https://deno.land/x/grammy_storages@v2.0.0/free/src/mod.ts";
-export { run } from "https://deno.land/x/grammy_runner@v1.0.3/mod.ts"; // local
 
 // utils
 export {
@@ -27,4 +26,4 @@ export {
 export { default as Fuse } from "https://deno.land/x/fuse@v6.4.1/dist/fuse.esm.min.js";
 
 // server (deno deploy)
-export { serve } from "https://deno.land/std@0.149.0/http/mod.ts";
+export { serve } from "https://deno.land/std@0.152.0/http/mod.ts";
