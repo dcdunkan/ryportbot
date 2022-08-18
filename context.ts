@@ -1,5 +1,8 @@
 import {
+  ChatTypeContext,
+  CommandContext,
   Context as BaseContext,
+  Filter,
   LazySessionFlavor,
   Message,
   NextFunction,
@@ -21,6 +24,15 @@ export type Context =
   & BaseContext
   & LazySessionFlavor<SessionData>
   & CustomContextFlavor;
+
+type GroupContext = ChatTypeContext<Context, "group" | "supergroup">;
+
+export type ReportContext =
+  | CommandContext<GroupContext>
+  | Filter<
+    GroupContext,
+    "msg:entities:mention" | "msg:caption_entities:mention"
+  >;
 
 export async function customMethods(ctx: Context, next: NextFunction) {
   ctx.alert = (text: string) =>
