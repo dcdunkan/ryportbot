@@ -67,7 +67,7 @@ async function reportHandler(ctx: ReportContext) {
   }
 
   // Maybe as channels?
-  if (ctx.senderChat === undefined) {
+  if (reportedMsg.sender_chat === undefined) {
     const member = await ctx.getChatMember(report.id);
     if (member.status === "administrator" || member.status === "creator") {
       return;
@@ -131,8 +131,8 @@ grp.callbackQuery([
   "handled",
   "mark-as-handled", // for the existing messages
 ]).filter(admins, async (ctx) => {
+  await ctx.alert("Marked as handled.");
   await ctx.deleteMessage();
-  return await ctx.alert("Marked as handled.");
 });
 
 grp.command(["report", "admin"])
