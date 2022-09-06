@@ -60,7 +60,6 @@ async function reportHandler(ctx: ReportContext) {
   // Connected channel's forwarded post.
   if (reportedMsg.is_automatic_forward) return;
 
-  const reporter = getUser(ctx.msg);
   const report = getUser(reportedMsg);
 
   if (report.id === ctx.me.id) {
@@ -75,14 +74,10 @@ async function reportHandler(ctx: ReportContext) {
     }
   }
 
-  let msg = `<a href="${
-    reporter.is_user
-      ? `tg://user?id=${reporter.id}`
-      : `https://t.me/${reporter.username}`
-  }">${esc(reporter.first_name)}</a> reported <a href="${
+  let msg = `Reported <a href="${
     report.is_user
       ? `tg://user?id=${report.id}`
-      : `https://t.me/${report.username}`
+      : `https://t.me/${report.username}` // not possible to message as private channels: safe to assume that there will be a username
   }">${esc(report.first_name)}</a> [<code>${report.id}</code>]\n`;
 
   let availableAdmins = 0;
@@ -100,7 +95,9 @@ async function reportHandler(ctx: ReportContext) {
     availableAdmins++;
     msg += admin.user.username
       ? `@${esc(admin.user.username)} `
-      : `<a href="tg://user?id=${admin.user.id}">${esc(admin.user.first_name)}</a> `;
+      : `<a href="tg://user?id=${admin.user.id}">${
+        esc(admin.user.first_name)
+      }</a> `;
   }));
 
   // If all admins are unavailable at the moment, just tag the chat creator.
@@ -110,111 +107,33 @@ async function reportHandler(ctx: ReportContext) {
     if (creator) {
       msg += creator.user.username
         ? `@${esc(creator.user.username)} `
-        : `<a href="tg://user?id=${creator.user.id}">${esc(creator.user.first_name)}</a> `;
+        : `<a href="tg://user?id=${creator.user.id}">${
+          esc(creator.user.first_name)
+        }</a> `;
     }
   }
 
-  const keyboard = new InlineKeyboard()
-    .text("Handled", "mark-as-handled");
-
-  // Delete the reporter's message.
-  if (admins.find((a) => a.user.id === ctx.me.id)) {
-    keyboard
-      .text("Ban", `ban_${reportedMsg.message_id}_${report.id}`);
-
-    try {
-      await ctx.deleteMessage();
-    } catch (_e) {
-      // Maybe the "/report" message got deleted :/
-      // Or Bot doesn't have permission to delete.
-    }
+  try {
+    await ctx.deleteMessage();
+  } catch (_e) {
+    // Maybe the "/report" message got deleted :/
+    // Or Bot doesn't have permission to delete.
   }
 
   await ctx.reply(msg, {
     parse_mode: "HTML",
-    reply_markup: keyboard.text("Ignore", "ignore"),
+    reply_markup: new InlineKeyboard().text("Handled", "handled"),
     reply_to_message_id: reportedMsg.message_id,
   });
 }
 
-grp.callbackQuery("mark-as-handled")
-  .filter(admins, async (ctx) => {
-    const msg = `${ctx.msg?.text?.split("\n")[0]}\n👀 Marked as handled by `;
-
-    await ctx.editMessageText(`${msg}${ctx.from.first_name}.`, {
-      entities: [
-        ...ctx.msg?.entities?.slice(0, 3)!,
-        {
-          type: "text_mention",
-          user: ctx.from,
-          offset: msg.length,
-          length: ctx.from.first_name.length,
-        },
-      ],
-    });
-
-    return await ctx.alert("Report has been marked as handled.");
-  });
-
-grp.callbackQuery(/ban_(?<msg>\d+)_(?<id>-?\d+)/)
-  .filter(admins, async (ctx) => {
-    const match = (ctx.match as RegExpMatchArray).groups!;
-    const me = await ctx.getChatMember(ctx.me.id);
-    if (me.status !== "administrator") {
-      return await ctx.alert("I am not an administrator in this chat.");
-    }
-    if (!me.can_restrict_members) {
-      return await ctx.alert(
-        "I don't have enough permissions to ban other users.",
-      );
-    }
-    const id = parseInt(match.id);
-    await ctx[id < 0 ? "banChatSenderChat" : "banChatMember"](id);
-
-    if (me.can_delete_messages) {
-      await ctx.api.deleteMessage(ctx.chat.id, parseInt(match.msg));
-      await ctx.alert("⚔️ Banned, they're gone!");
-    } else {
-      await ctx.alert(
-        "Banned. But, I don't have enough permissions so I can't remove their message.",
-      );
-    }
-
-    const msg = `${
-      ctx.msg?.text?.split("\n")[0]
-    }\n👋🏽 Banned from the group by `;
-
-    await ctx.editMessageText(`${msg}${ctx.from.first_name}.`, {
-      entities: [
-        ...ctx.msg?.entities?.slice(0, 3)!,
-        {
-          type: "text_mention",
-          user: ctx.from,
-          offset: msg.length,
-          length: ctx.from.first_name.length,
-        },
-      ],
-    });
-  });
-
-grp.callbackQuery("ignore")
-  .filter(admins, async (ctx) => {
-    const msg = `${ctx.msg?.text?.split("\n")[0]}\n🗣 Report ignored by `;
-
-    await ctx.editMessageText(`${msg}${ctx.from.first_name}.`, {
-      entities: [
-        ...ctx.msg?.entities?.slice(0, 3)!,
-        {
-          type: "text_mention",
-          user: ctx.from,
-          offset: msg.length,
-          length: ctx.from.first_name.length,
-        },
-      ],
-    });
-
-    return await ctx.alert("Report ignored, sorry to bother you.");
-  });
+grp.callbackQuery([
+  "handled",
+  "mark-as-handled", // for the existing messages
+]).filter(admins, async (ctx) => {
+  await ctx.deleteMessage();
+  return await ctx.alert("Marked as handled.");
+});
 
 grp.command(["report", "admin"])
   .filter(nonAdmins, reportHandler);
