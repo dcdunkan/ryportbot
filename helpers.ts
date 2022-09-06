@@ -33,7 +33,6 @@ export function getDisplayTime(time: Date) {
   }`;
 }
 
-// what a weird hack
 function checkIfInBetween(offset: number, start: number, end: number) {
   let hours = getUserTime(offset).getHours();
   if (start > hours) hours += 24;
@@ -55,7 +54,6 @@ export function getRandomReply(replies: string[]) {
   return replies[Math.floor(Math.random() * replies.length)];
 }
 
-// this is ultra weird
 export function hoursKeyboard(
   startsAt: number,
   prefix: string,
@@ -118,7 +116,7 @@ export function esc(str: string) {
   return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
+    .replace(/>/g, "&gt;");
 }
 
 // Option builders
