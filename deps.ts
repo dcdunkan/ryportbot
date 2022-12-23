@@ -10,12 +10,12 @@ export {
   type LazySessionFlavor,
   type NextFunction,
   webhookCallback,
-} from "https://deno.land/x/grammy@v1.11.0/mod.ts";
+} from "https://deno.land/x/grammy@v1.12.1/mod.ts";
 export type {
   Message,
   ParseMode,
-} from "https://deno.land/x/grammy@v1.11.0/types.ts";
-export { freeStorage } from "https://deno.land/x/grammy_storages@v2.0.1/free/src/mod.ts";
+} from "https://deno.land/x/grammy@v1.12.1/types.ts";
+export { freeStorage } from "https://deno.land/x/grammy_storages@v2.0.2/free/src/mod.ts";
 
 // utils
 export {
@@ -26,4 +26,4 @@ export {
 export { default as Fuse } from "https://deno.land/x/fuse@v6.4.1/dist/fuse.esm.min.js";
 
 // server (deno deploy)
-export { serve } from "https://deno.land/std@0.154.0/http/mod.ts";
+export { serve } from "https://deno.land/std@0.170.0/http/mod.ts";
