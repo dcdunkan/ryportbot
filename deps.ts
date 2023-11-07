@@ -25,5 +25,3 @@ export {
 // @deno-types="https://deno.land/x/fuse@v6.4.1/dist/fuse.d.ts"
 export { default as Fuse } from "https://deno.land/x/fuse@v6.4.1/dist/fuse.esm.min.js";
 
-// server (deno deploy)
-export { serve } from "https://deno.land/std@0.170.0/http/mod.ts";
