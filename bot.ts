@@ -130,10 +130,10 @@ async function reportHandler(ctx: ReportContext) {
 grp.callbackQuery([
   "handled",
   "mark-as-handled", // for the existing messages
-]).filter(admins, async (ctx) => {
+]).branch(admins, async (ctx) => {
   await ctx.alert("Marked as handled.");
   await ctx.deleteMessage();
-});
+}, (ctx) => ctx.alert("Not allowed."));
 
 grp.command(["report", "admin"])
   .filter(nonAdmins, reportHandler);
