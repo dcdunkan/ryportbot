@@ -131,7 +131,7 @@ grp.callbackQuery([
   "handled",
   "mark-as-handled", // for the existing messages
 ]).branch(admins, async (ctx) => {
-  await ctx.alert("Marked as handled.");
+  await ctx.answerCallbackQuery("Marked as handled.");
   await ctx.deleteMessage();
 }, (ctx) => ctx.alert("Not allowed."));
 
